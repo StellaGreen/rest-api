@@ -1,7 +1,7 @@
 const express = require('express')
 const db = require('./mydb')
 
-const IP = '192.168.0.10'
+const IP = '192.168.1.12'
 const PORT = 3333
 
 const app = express()
@@ -69,37 +69,99 @@ app.use(getApiKey)
 app.use(validateApiKey)
 
 app.get('/user_by_id/:userId', async (req, res) => {
-  // A implementer
+  let userId = req.params.userId
+  if (isNaN(userId)) {
+    res.json({ status: 'fail', data: { userId: `${userId} is not a number` } })
+    return
+  }
+  userId = Number(userId)
+  try {
+    const result = await db.getUserById(userId)
+    res.json({ status: 'success', data: { user: result } })
+  } catch (e) {
+    if (e.status === 'fail') {
+      res.status(400).json({ status: e.status, data: e.dataError })
+    } else {
+      // e.status === 50X
+      res.status(500).json({ status: e.status, message: e.message })
+    }
+  }
 })
 
 app.get('/myinfo', async (req, res) => {
   const userId = req.userId
   try {
-    const result = await db.getUserByApiKey(req.apiKey)
-    // Check if user is active
-    // check if null result then not found
-    if (!result || !result.active) {
-      res.status(403).json({ status: 'fail', data: { key: 'Invalid api key' } })
-    } else {
-      req.userId = result.id
-      next()
-    }
+    const result = await db.getUserById(userId)
+    res.json({ status: 'success', data: { user: result } })
   } catch (e) {
-    console.log(e)
-    res.status(500).json({ code: 'error', message: 'Internal server error' })
+    if (e.status === 'fail') {
+      res.status(400).json({ status: e.status, data: e.dataError })
+    } else {
+      // e.status === 50X
+      res.status(500).json({ status: e.status, message: e.message })
+    }
   }
 })
 
 app.get('/user_by_username/:username', async (req, res) => {
   // A implementer
+  const username = req.username;
+  try {
+    const result = await db.getUserByUsername(username)
+    res.json({ status: 'success', data: { user: result } })
+  }catch(e) {
+    if (e.status === 'fail') {
+      res.status(400).json({ status: e.status, data: e.dataError })
+    } else {
+      // e.status === 50X
+      res.status(500).json({ status: e.status, message: e.message })
+    }
+  }
 })
 
 app.post('/send_message/:username', async (req, res) => {
-  // A implementer
+  const username = req.params.username
+  try {
+    const dst = await db.getUserByUsername(username);
+    const result = await db.sendMessage(req.userId, dst.id, req.body.content);
+    res.json({
+      status: 'success',
+      data: {
+        srcId: result.srcId,
+        dstId: result.dstId,
+        content: result.content
+      }
+    })
+  } catch (e) {
+    if (e.status === 'fail') {
+      res.status(400).json({ status: e.status, data: e.dataError })
+    } else {
+      // e.status === 50X
+      res.status(500).json({ status: e.status, message: e.message })
+    }
+  }
 })
 
-app.get('/red_message', async (req, res) => {
+app.get('/read_message/', async (req, res) => {
   // A implementer
+  try {
+    const result = await db.getMessage(req.userId)
+    res.json((result).map(el => el ) = {
+      status: 'success',
+      data: {
+        srcId: result.srcId,
+        dstId: result.dstId,
+        content: result.content
+      }
+    })
+  } catch (e) {
+    if (e.status === 'fail') {
+      res.status(400).json({ status: e.status, data: e.dataError })
+    } else {
+      // e.status === 50X
+      res.status(500).json({ status: e.status, message: e.message })
+    }
+  }
 })
 
 app.listen(PORT, IP, () => {
